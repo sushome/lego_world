@@ -1,0 +1,810 @@
+1.1 编码种类
+	1.ASCII码
+		单字节编码
+		一个字节的低7位表示,第一位统一用0表示,共128个,0-31为控制字符如换行回车,32-126为打印字符可通过键盘输入并能够显示
+
+		ASCII的扩展 EASCII规则 将最高位也用于显示 即8位 在原来的128个字符增加到256 ISO-8859-1即为EASCII的一个应用
+	2.ISO-8859-1
+		单字节编码
+		将ASCII码的最高位也用于表示字符,即用一个字节的8位表示,共256个,在ASCII码的基础上涵盖了大多数西欧语言字符,应用最广范，类似的标准还有ISO-8859-1至ISO-8859-15
+	3.GB2312
+		双字节编码,兼容ASCII 00-7f即ASCII码,为单字节 双字节的首个字节在81-FE之间,通过首字节即可判断单双字节
+	4.UTF-8
+		UTF-8就是在互联网上使用最广的一种Unicode的实现方式。其他实现方式还包括UTF-16（字符用两个字节或四个字节表示）和UTF-32（字符用四个字节表示），不过在互联网上基本不用。重复一遍，这里的关系是，UTF-8是Unicode的实现方式之一。
+		UTF-8的编码规则很简单，只有二条：
+		1）对于单字节的符号，字节的第一位设为0，后面7位为这个符号的unicode码。因此对于英语字母，UTF-8编码和ASCII码是相同的。
+		2）对于n字节的符号（n>1），第一个字节的前n位都设为1，第n+1位设为0，后面字节的前两位一律设为10。剩下的没有提及的二进制位，全部为这个符号的unicode码。
+		下表总结了编码规则，字母x表示可用编码的位。
+		Unicode符号范围 | UTF-8编码方式
+		(十六进制) | （二进制）
+		--------------------+---------------------------------------------
+		0000 0000-0000 007F | 0xxxxxxx
+		0000 0080-0000 07FF | 110xxxxx 10xxxxxx
+		0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
+		0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+		跟据上表，解读UTF-8编码非常简单。如果一个字节的第一位是0，则这个字节单独就是一个字符；如果第一位是1，则连续有多少个1，就表示当前字符占用多少个字节。
+		下面，还是以汉字"严"为例，演示如何实现UTF-8编码。
+		已知"严"的unicode是4E25（100111000100101），根据上表，可以发现4E25处在第三行的范围内（0000 0800-0000 FFFF），因此"严"的UTF-8编码需要三个字节，即格式是"1110xxxx 10xxxxxx 10xxxxxx"。然后，从"严"的最后一个二进制位开始，依次从后向前填入格式中的x，多出的位补0。这样就得到了，"严"的UTF-8编码是"11100100 10111000 10100101"，转换成十六进制就是E4B8A5。
+
+		
+	Unicode
+		Unicode只是一个符号集，它只规定了符号的二进制代码，却没有规定这个二进制代码应该如何存储。
+		比如，汉字"严"的unicode是十六进制数4E25，转换成二进制数足足有15位（100111000100101），也就是说这个符号的表示至少需要2个字节。表示其他更大的符号，可能需要3个字节或者4个字节，甚至更多。
+		这里就有两个严重的问题，第一个问题是，如何才能区别Unicode和ASCII？计算机怎么知道三个字节表示一个符号，而不是分别表示三个符号呢？第二个问题是，我们已经知道，英文字母只用一个字节表示就够了，如果Unicode统一规定，每个符号用三个或四个字节表示，那么每个英文字母前都必然有二到三个字节是0，这对于存储来说是极大的浪费，文本文件的大小会因此大出二三倍，这是无法接受的。
+		它们造成的结果是：1）出现了Unicode的多种存储方式，也就是说有许多种不同的二进制格式，可以用来表示Unicode。2）Unicode在很长一段时间内无法推广，直到互联网的出现。
+
+2 编码
+	2.1 IO 
+		2.1.1 JAVA处理IO
+			InputStreamReader
+			底层为InputStream的实现类获取字节流,调用StreamDecoder
+			(Charset指定编码格式,否则为本地环境默认字符集,如在中文环境中为GBK)
+			将字节转换为字符
+			如构造方法InputStreamReader(inputstream,charset)
+
+			String file = "E:/demo/IO/io1write.txt";
+			String charset1 = "UTF-8";
+			FileOutputStream outputstream = new FileOutputStream(file);
+			OutputStreamWriter writer = new OutputStreamWriter(outputstream,charset1);
+			try {
+				writer.write("Iam编码");
+			}finally{
+				writer.close();
+			}
+			String charset2 = "UTF-8";
+			FileInputStream inputstream = new FileInputStream(file);
+			InputStreamReader reader = new InputStreamReader(inputstream,charset2);
+			StringBuffer str = new StringBuffer();
+			char[] buf = new char[60];
+			int count = 0;
+			try{
+				
+			  while(( count= reader.read(buf))!= -1){
+				str.append(buf,0,count);
+			  }
+			}finally{
+				reader.close();
+			}
+			System.out.println(str.toString());
+
+			存入txt文件中时若charset1="GBK"则储存编码格式为GBK,文件为7字节
+			若charset1="UTF-8",则储存编码格式为UTF-8,文件为9字节
+			自行替换charset1和charset2 改用UTF-8 GBK ISO-8859-1 可能会出现乱码
+			charset1  	charset2    	E:/demo/IO/io1write.txt   	System.out.println
+			UTF-8		UTF-8     		Iam编码						Iam编码
+			GBK         GBK       		Iam编码						Iam编码
+			ISO-8859-1	ISO-8859-1		Iam??						Iam??
+			UTF-8		GBK             Iam编码						Iam缂栫爜
+			GBK         UTF-8			Iam编码						Iam????
+
+	2.2 JAVA的操作
+		2.2.1 String.getBytes() String.getBytes(encoding)
+			package example.encoding;
+
+			import java.io.UnsupportedEncodingException;
+
+			/**
+			 * The Class GetBytesTest.
+			 */
+			public class GetBytesTest {
+
+			    /**
+			     * The main method.
+			     * 
+			     * @param args the arguments
+			     */
+			    public static void main(String args[]) {
+			        
+			        String content = "中文";
+			        String defaultEncoding = System.getProperty("file.encoding");
+			        String defaultLnaguage = System.getProperty("user.language");
+			        System.out.println("System default encoding --- " + defaultEncoding);
+			        System.out.println("System default language --- " + defaultLnaguage);
+
+			        GetBytesTest tester = new GetBytesTest();
+
+			        byte[] defaultBytes = tester.getBytesWithDefaultEncoding(content);
+			        tester.printBytes(defaultBytes);
+
+			        byte[] iso8859Bytes = tester.getBytesWithGivenEncoding(content,
+			                "ISO-8859-1");
+			        tester.printBytes(iso8859Bytes);
+
+			        byte[] gbkBytes = tester.getBytesWithGivenEncoding(content, "GBK");
+			        tester.printBytes(gbkBytes);
+
+			        byte[] utfBytes = tester.getBytesWithGivenEncoding(content, "UTF-8");
+			        tester.printBytes(utfBytes);
+
+			    }
+
+			    /**
+			     * Gets the bytes with default encoding.
+			     * 
+			     * @param content the content
+			     * 
+			     * @return the bytes with default encoding
+			     */
+			    public byte[] getBytesWithDefaultEncoding(String content) {
+			        System.out.println("\nEncode with default encoding\n");
+			        byte[] bytes = content.getBytes();
+			        return bytes;
+			    }
+
+			    /**
+			     * Gets the bytes with given encoding.
+			     * 
+			     * @param content the content
+			     * @param encoding the encoding
+			     * 
+			     * @return the bytes with given encoding
+			     */
+			    public byte[] getBytesWithGivenEncoding(String content, String encoding) {
+			        System.out.println("\nEncode with given encoding : " + encoding + "\n");
+			        try {
+			            byte[] bytes = content.getBytes(encoding);
+			            return bytes;
+			        } catch (UnsupportedEncodingException e) {
+			            e.printStackTrace();
+			            return null;
+			        }
+			    }
+
+			    /**
+			     * Prints the bytes.
+			     * 
+			     * @param bytes the bytes
+			     */
+			    public void printBytes(byte[] bytes) {
+			        for (int i = 0; i < bytes.length; i++) {
+			            System.out.print(" byte[" + i + "] = " + bytes[i]);
+			            System.out
+			                    .println(" hex string = " + Integer.toHexString(bytes[i]));
+			        }
+			    }
+
+			}
+
+			【1】在中文平台下，测试结果如下：
+			System default encoding --- GBK
+			System default language --- zh
+
+			Encode with default encoding
+
+			 byte[0] = -42 hex string = ffffffd6
+			 byte[1] = -48 hex string = ffffffd0
+			 byte[2] = -50 hex string = ffffffce
+			 byte[3] = -60 hex string = ffffffc4
+
+			Encode with given encoding : ISO-8859-1
+
+			 byte[0] = 63 hex string = 3f
+			 byte[1] = 63 hex string = 3f
+
+			Encode with given encoding : GBK
+
+			 byte[0] = -42 hex string = ffffffd6
+			 byte[1] = -48 hex string = ffffffd0
+			 byte[2] = -50 hex string = ffffffce
+			 byte[3] = -60 hex string = ffffffc4
+
+			Encode with given encoding : UTF-8
+
+			 byte[0] = -28 hex string = ffffffe4
+			 byte[1] = -72 hex string = ffffffb8
+			 byte[2] = -83 hex string = ffffffad
+			 byte[3] = -26 hex string = ffffffe6
+			 byte[4] = -106 hex string = ffffff96
+			 byte[5] = -121 hex string = ffffff87
+
+			【2】在英文平台下，测试结果如下：
+
+			System default encoding --- Cp1252
+			System default language --- en
+			Encode with default encoding
+
+			 byte[0] = 63 hex string = 3f
+			 byte[1] = 63 hex string = 3f
+
+			Encode with given encoding : ISO-8859-1
+
+			 byte[0] = 63 hex string = 3f
+			 byte[1] = 63 hex string = 3f
+
+			Encode with given encoding : GBK
+
+			 byte[0] = -42 hex string = ffffffd6
+			 byte[1] = -48 hex string = ffffffd0
+			 byte[2] = -50 hex string = ffffffce
+			 byte[3] = -60 hex string = ffffffc4
+
+			Encode with given encoding : UTF-8
+
+			 byte[0] = -28 hex string = ffffffe4
+			 byte[1] = -72 hex string = ffffffb8
+			 byte[2] = -83 hex string = ffffffad
+			 byte[3] = -26 hex string = ffffffe6
+			 byte[4] = -106 hex string = ffffff96
+			 byte[5] = -121 hex string = ffffff87
+
+			【结论】
+
+			getBytes()、getBytes(encoding)函数的作用是使用系统默认或者指定的字符集编码方式，将字符串编码成字节数组。
+			在中文平台下，默认的字符集编码是GBK，此时如果使用getBytes()或者getBytes("GBK")，则按照GBK的编码规则将每个中文字符用2个byte表示。所以我们看到"中文"最终GBK编码结果就是： -42 -48 -50 -60 。-42和-48代表了"中"字，而"-50"和"-60"则代表了"文"字。
+
+			在中文平台下，如果指定的字符集编码是UTF-8，那么按照UTF-8对中文的编码规则：每个中文用3个字节表示，那么"中文"这两个字符最终被编码成：-28 -72 -83、-26 -106 -121两组。每3个字节代表一个中文字符。
+
+			在中文平台下，如果指定的字符集编码是ISO-8859-1，由于此字符集是单字节编码，所以使用getBytes("ISO-8859-1")时，每个字符只取一个字节，每个汉字只取到了一半的字符。另外一半的字节丢失了。由于这一半的字符在字符集中找不到对应的字符，所以默认使用编码63代替，也就是?。
+
+			在英文平台下，默认的字符集编码是Cp1252(类似于ISO-8859-1)，如果使用GBK、UTF-8进行编码，得到的字节数组依然是正确的(GBK4个字节，UTF-8是6个字节)。因为在JVM内部是以Unicode存储字符串的，使用getBytes(encoding)会让JVM进行一次Unicode到指定编码之间的转换。对于GBK，JVM依然会转换成4个字节，对于UTF-8，JVM依然会转换成6个字节。但是对于ISO-8859-1，则由于无法转换(2个字节--->1个字节，截取了一半的字节)，所以转换后的结果是错误的。
+
+			相同的平台下，同一个中文字符，在不同的编码方式下，得到的是完全不同的字节数组。这些字节数组有可能是正确的(只要该字符集支持中文)，也可能是完全错误的(该字符集不支持中文)。
+
+			2.2.2 String的toCharArray()
+			package example.encoding;
+
+			import java.io.UnsupportedEncodingException;
+
+			/**
+			 * The Class GetCharTest.
+			 */
+			public class GetCharTest {
+
+			    /**
+			     * The main method.
+			     * 
+			     * @param args the arguments
+			     */
+			    public static void main(String args[]) {
+			        String content = "中文";
+			        String defaultEncoding = System.getProperty("file.encoding");
+			        String defaultLnaguage = System.getProperty("user.language");
+			        System.out.println("System default encoding --- " + defaultEncoding);
+			        System.out.println("System default language --- " + defaultLnaguage);
+
+			        GetCharTest tester = new GetCharTest();
+			        tester.getCharWithDefaultEncoding(content);
+			        tester.getCharWithGivenEncoding(content, "ISO-8859-1");
+			        tester.getCharWithGivenEncoding(content, "GBK");
+			        tester.getCharWithGivenEncoding(content, "UTF-8");
+			    }
+
+			    /**
+			     * Gets the char with default encoding.
+			     * 
+			     * @param content the content
+			     * 
+			     * @return the char with default encoding
+			     */
+			    public void getCharWithDefaultEncoding(String content) {
+			        System.out.println("\nGet characters with default encoding\n");
+			        printCharArray(content);
+			    }
+
+			    /**
+			     * Gets the char with given encoding.
+			     * 
+			     * @param content the content
+			     * @param encoding the encoding
+			     * 
+			     * @return the char with given encoding
+			     */
+			    public void getCharWithGivenEncoding(String content, String encoding) {
+			        System.out.println("\nGet characters with given encoding : " + encoding
+			                + "\n");
+			        try {
+			            String encodedString = new String(content.getBytes(), encoding);
+			            printCharArray(encodedString);
+			        } catch (UnsupportedEncodingException e) {
+			            e.printStackTrace();
+			        }
+			    }
+
+			    /**
+			     * Prints the char array.
+			     * 
+			     * @param inStr the in str
+			     */
+			    public void printCharArray(String inStr) {
+			        char[] charArray = inStr.toCharArray();
+
+			        for (int i = 0; i < inStr.length(); i++) {
+			            byte b = (byte) charArray[i];
+			            short s = (short) charArray[i];
+			            String hexB = Integer.toHexString(b).toUpperCase();
+			            String hexS = Integer.toHexString(s).toUpperCase();
+			            StringBuffer sb = new StringBuffer();
+
+			            // print char
+			            sb.append("char[");
+			            sb.append(i);
+			            sb.append("]='");
+			            sb.append(charArray[i]);
+			            sb.append("'\t");
+
+			            // byte value
+			            sb.append("byte=");
+			            sb.append(b);
+			            sb.append(" \\u");
+			            sb.append(hexB);
+			            sb.append('\t');
+
+			            // short value
+			            sb.append("short=");
+			            sb.append(s);
+			            sb.append(" \\u");
+			            sb.append(hexS);
+			            sb.append('\t');
+
+			            // Unicode Block
+			            sb.append(Character.UnicodeBlock.of(charArray[i]));
+
+			            System.out.println(sb.toString());
+			        }
+			        System.out.println("\nCharacters length: " + charArray.length);
+			    }
+
+			}
+
+			【1】在中文平台下，测试的结果如下：
+			System default encoding --- GBK
+			System default language --- zh
+			Get characters with default encoding
+
+			char[0]='中' byte=45 \u2D short=20013 \u4E2D CJK_UNIFIED_IDEOGRAPHS
+			char[1]='文' byte=-121 \uFFFFFF87 short=25991 \u6587 CJK_UNIFIED_IDEOGRAPHS
+
+			Characters length: 2
+
+			Get characters with given encoding : ISO-8859-1
+
+			char[0]='?' byte=-42 \uFFFFFFD6 short=214 \uD6 LATIN_1_SUPPLEMENT
+			char[1]='?' byte=-48 \uFFFFFFD0 short=208 \uD0 LATIN_1_SUPPLEMENT
+			char[2]='?' byte=-50 \uFFFFFFCE short=206 \uCE LATIN_1_SUPPLEMENT
+			char[3]='?' byte=-60 \uFFFFFFC4 short=196 \uC4 LATIN_1_SUPPLEMENT
+
+			Characters length: 4
+
+			Get characters with given encoding : GBK
+
+			char[0]='中' byte=45 \u2D short=20013 \u4E2D CJK_UNIFIED_IDEOGRAPHS
+			char[1]='文' byte=-121 \uFFFFFF87 short=25991 \u6587 CJK_UNIFIED_IDEOGRAPHS
+
+			Characters length: 2
+
+			Get characters with given encoding : UTF-8
+
+			char[0]='?' byte=-3 \uFFFFFFFD short=-3 \uFFFFFFFD SPECIALS
+			char[1]='?' byte=-3 \uFFFFFFFD short=-3 \uFFFFFFFD SPECIALS
+			char[2]='?' byte=-3 \uFFFFFFFD short=-3 \uFFFFFFFD SPECIALS
+			char[3]='?' byte=-3 \uFFFFFFFD short=-3 \uFFFFFFFD SPECIALS
+
+			Characters length: 4
+
+			【2】在英文平台下，测试的结果如下：
+			System default encoding --- Cp1252
+			System default language --- en
+
+			Get characters with default encoding
+			char[0]='?' byte=45 \u2D short=20013 \u4E2D CJK_UNIFIED_IDEOGRAPHS
+			char[1]='?' byte=-121 \uFFFFFF87 short=25991 \u6587 CJK_UNIFIED_IDEOGRAPHS
+
+			Characters length: 2
+
+			Get characters with given encoding : ISO-8859-1
+
+			char[0]='?' byte=63 \u3F short=63 \u3F BASIC_LATIN
+			char[1]='?' byte=63 \u3F short=63 \u3F BASIC_LATIN
+
+			Characters length: 2
+
+			Get characters with given encoding : GBK
+
+			char[0]='?' byte=63 \u3F short=63 \u3F BASIC_LATIN
+			char[1]='?' byte=63 \u3F short=63 \u3F BASIC_LATIN
+
+			Characters length: 2
+
+			Get characters with given encoding : UTF-8
+
+			char[0]='?' byte=63 \u3F short=63 \u3F BASIC_LATIN
+			char[1]='?' byte=63 \u3F short=63 \u3F BASIC_LATIN
+
+			Characters length: 2
+
+			【结论】
+			和getBytes(encoding)不同，toCharArray()返回的是"自然字符"。但是这个"自然字符"的数目和内容却是由原始的编码方式决定的。来看看里面是如何进行字符串的操作的：
+			 
+			 String encodedString = new String(content.getBytes(), encoding);
+			 char[] charArray = inStr.toCharArray();
+
+			可以看到系统首先对原始字符串按照默认的编码方式进行编码，得到一个字节数组，然后按照指定的新的编码方式进行解码，得到新的编码后的字符串。再转换成对应的字符数组。
+
+			由于在中文平台下，默认的字符集编码是GBK，于是content.getBytes()得到的是什么呢？就是下面这4个字节：
+			 byte[0] = -42 hex string = ffffffd6
+			 byte[1] = -48 hex string = ffffffd0
+			 byte[2] = -50 hex string = ffffffce
+			 byte[3] = -60 hex string = ffffffc4
+
+			如果新的encoding是GBK，那么经过解码后，由于一个字符用2个字节表示。于是最终的结果就是：
+			 char[0]='中' --- byte[0] + byte[1]
+			 char[1]='文' --- byte[2] + byte[3]
+
+			如果新的encoding是ISO-8859-1，那么经过解码后，由于一个字符用1个字节表示，于是原来本应该2个字节一起解析的变成单个字节解析，每个字节都代表了一个汉字字符的一半。这一半的字节在ISO-8859-1中找不到对应的字符，就变成了"?"了，最终的结果：
+			 char[0]='?' ---- byte[0] 
+			 char[1]='?' ---- byte[1]
+			 char[2]='?' ---- byte[2]
+			 char[3]='?' ---- byte[3]
+
+			如果新的encoding是UTF-8，那么经过解码后，由于一个字符用3个字节表示，于是原来4个字节的数据无法正常的解析成UTF-8的数据，最终的结果也是每一个都变成"?"。
+			 char[0]='?' ---- byte[0]
+			 char[1]='?' ---- byte[1]
+			 char[2]='?' ---- byte[2]
+			 char[3]='?' ---- byte[3]
+
+			如果是在英文平台下，由于默认的编码方式是Cp1252，于是content.getBytes()得到的字节都是被截去一半的残留字符，所以我们看到在英文平台下，不论指定的encoding是GBK、UTF-8，其结果和ISO-8859-1都是一样的。
+
+			记住：
+
+			这个方法再次证明了String的getBytes()方法的危险性，如果我们使用new String(str.getBytes(), encoding)对字符串进行重新编码解码时，我们一定要清楚str.getBytes()方法返回的字节数组的长度、内容到底是什么，因为在接下来使用新的encoding进行编码解码时，Java并不会自动地对字节数组进行扩展以适应新的encoding。而是按照新的编码方法直接对该字节数组进行解析。
+
+			于是结果就像上面的例子一样，同样是4个原始字节，有些每2个一组进行解析，有些每个一组进行解析，有些每3个一组进行解析。其结果就只能看那种编码方式合适了。
+
+
+			2.2.3 输出输入
+			package example.encoding;
+
+			import java.io.BufferedWriter;
+			import java.io.File;
+			import java.io.FileNotFoundException;
+			import java.io.FileOutputStream;
+			import java.io.FileWriter;
+			import java.io.IOException;
+			import java.io.OutputStreamWriter;
+			import java.io.PrintWriter;
+			import java.io.UnsupportedEncodingException;
+			import java.io.Writer;
+			import java.nio.charset.Charset;
+			import java.util.Iterator;
+			import java.util.Set;
+			import java.util.SortedMap;
+
+			/**
+			 * <pre>
+			 * The Class IOEncodeTest is a tester class for java encoding. Mainnaly contains
+			 * two parts:
+			 *  1.Test written by FileWriter, with or without given character encoding value
+			 *  2.Test written by OutputStreamWriter, with or without given character encoding value
+			 * </pre>
+			 * 
+			 * @author Paul Lin
+			 * @version 1.0
+			 */
+			public class OutputEncodingTest {
+
+			    private static String word = "Hello world! 中国";
+
+			    private static final String ENCODING_EN = "ISO-8859-1";
+
+			    private static final String ENCODING_CN = "GB2312";
+
+			    private static final String ENCODING_UTF = "UTF-8";
+
+			    private static final String DEFAULT_SYSTEM_ENCODING = System
+			            .getProperty("file.encoding");
+
+			    /**
+			     * The main method.
+			     * 
+			     * @param args the arguments
+			     */
+			    public static void main(String args[]) {
+			        OutputEncodingTest tester = new OutputEncodingTest();
+			        tester.testFileWriter();
+			        tester.testOutputStreamWriter();
+			    }
+
+			    /**
+			     * Test file writer.
+			     */
+			    public void testFileWriter() {
+			        // Create test result folder
+			        String resultFolder = createResultFolder(System
+			                .getProperty("user.language"), getBasePath());
+			        // With default platform encoding
+			        writeByFileWriter(word, resultFolder);
+			        // With given system file.encoding property
+			        writeByFileWriter(word, ENCODING_EN, resultFolder);
+			        writeByFileWriter(word, ENCODING_CN, resultFolder);
+			        writeByFileWriter(word, ENCODING_UTF, resultFolder);
+			    }
+
+			    /**
+			     * Test output stream writer.
+			     */
+			    public void testOutputStreamWriter() {
+			        // Create test result folder
+			        String resultFolder = createResultFolder(System
+			                .getProperty("user.language"), getBasePath());
+			        // With default platform encoding
+			        writeByOutputStreamWriter(word, resultFolder);
+			        // With given system file.encoding property
+			        writeByOutputStreamWriter(word, ENCODING_EN, resultFolder);
+			        writeByOutputStreamWriter(word, ENCODING_CN, resultFolder);
+			        writeByOutputStreamWriter(word, ENCODING_UTF, resultFolder);
+			    }
+
+			    /**
+			     * Prints the available charset.
+			     */
+			    public void printAvailableCharset() {
+			        SortedMap<String, Charset> charsets = Charset.availableCharsets();
+			        Set<String> charsetKeys = charsets.keySet();
+			        System.out.println("\n<<<< Canonical name -- Display name -- "
+			                + " Can encode >>>>\n");
+
+			        Iterator<String> i = charsetKeys.iterator();
+			        while (i.hasNext()) {
+			            String key = (String) i.next();
+			            Charset charset = (Charset) charsets.get(key);
+			            String displayName = charset.displayName();
+			            boolean canEncode = charset.canEncode();
+			            System.out.println(key + " - " + displayName + " - " + canEncode);
+			        }
+			    }
+
+			    /**
+			     * Write by file writer.
+			     * 
+			     * @param content the content
+			     */
+			    private void writeByFileWriter(String content, String destination) {
+			        String defaultEncoding = System.getProperty("file.encoding");
+			        System.out.println("Using default system encoding: " + defaultEncoding);
+			        writeByFileWriter(content, defaultEncoding, destination);
+			    }
+
+			    /**
+			     * Write by file writer.
+			     * 
+			     * @param content the content
+			     * @param encoding the encoding
+			     */
+			    private void writeByFileWriter(String content, String encoding,
+			            String destination) {
+			        printDebugInformation("FileWriter", encoding, content);
+
+			        // Get system default encoding
+			        String defaultEncoding = System.getProperty("file.encoding");
+
+			        // Reset underlying platform character encoding
+			        if (!defaultEncoding.equalsIgnoreCase(encoding)) {
+			            System.setProperty("file.encoding", encoding);
+			        }
+
+			        // Save as file with given encoding value
+			        String file = returnFileName(destination, "write_by_filewriter_",
+			                encoding, ".txt");
+			        try {
+			            Writer writer = new BufferedWriter(new FileWriter(file));
+			            writer.write(content);
+			            writer.flush();
+			            writer.close();
+			        } catch (IOException ioe) {
+			            ioe.printStackTrace();
+			        }
+
+			        // Reset character encoding to system default value
+			        resetDefaultSystemEncoding();
+			    }
+
+			    /**
+			     * Write by output stream writer.
+			     * 
+			     * @param content the content
+			     */
+			    private void writeByOutputStreamWriter(String content, String destination) {
+			        String defaultEncoding = System.getProperty("file.encoding");
+			        System.out.println("Using default system encoding: " + defaultEncoding);
+			        writeByOutputStreamWriter(content, defaultEncoding, destination);
+			    }
+
+			    /**
+			     * Write by output stream writer.
+			     * 
+			     * @param content the content
+			     * @param encoding the encoding
+			     */
+			    private void writeByOutputStreamWriter(String content, String encoding,
+			            String destination) {
+			        printDebugInformation("OutputStreamWriter", encoding, content);
+
+			        // Save as file with given encoding value
+			        String file = returnFileName(destination,
+			                "write_by_outputStreamWriter_", encoding, ".txt");
+			        try {
+			            Writer writer = new PrintWriter(
+			                    new BufferedWriter(new OutputStreamWriter(
+			                            new FileOutputStream(file), encoding)));
+			            writer.write(content);
+			            writer.flush();
+			            writer.close();
+			        } catch (FileNotFoundException fnfe) {
+			            fnfe.printStackTrace();
+			        } catch (UnsupportedEncodingException uee) {
+			            uee.printStackTrace();
+			        } catch (IOException ioe) {
+			            ioe.printStackTrace();
+			        }
+
+			        // Reset character encoding to system default value
+			        resetDefaultSystemEncoding();
+			    }
+
+			    /**
+			     * Gets the base path.
+			     * 
+			     * @return the base path
+			     */
+			    private String getBasePath() {
+			        StringBuffer finalPath = new StringBuffer();
+			        String dir = System.getProperty("user.dir");
+
+			        finalPath.append(dir);
+			        finalPath.append((dir.endsWith("\\") || dir.endsWith("/")) ? "" : "/");
+			        finalPath.append("src").append("/");
+			        finalPath.append("example").append("/");
+			        finalPath.append("encoding").append("/");
+			        return finalPath.toString();
+			    }
+
+			    /**
+			     * Return file name.
+			     * 
+			     * @param basePath the base path
+			     * @param prefix the prefix
+			     * @param content the content
+			     * @param subfix the subfix
+			     * 
+			     * @return the string
+			     */
+			    private String returnFileName(String basePath, String prefix,
+			            String content, String subfix) {
+			        StringBuffer name = new StringBuffer(basePath);
+			        if ((!basePath.endsWith("\\") && (!basePath.endsWith("/")))) {
+			            name.append("/");
+			        }
+			        name.append(prefix);
+			        name.append(content);
+			        name.append(subfix);
+			        return name.toString();
+			    }
+
+			    /**
+			     * Creates the result folder.
+			     * 
+			     * @param platform the platform
+			     * @param fullPath the full path
+			     * 
+			     * @return the string
+			     */
+			    private String createResultFolder(String platform, String fullPath) {
+			        StringBuffer resultFolder = new StringBuffer();
+
+			        if (fullPath.endsWith("\\") || fullPath.endsWith("/")) {
+			            resultFolder.append(fullPath);
+			        } else {
+			            resultFolder.append(fullPath).append("/");
+			        }
+			        resultFolder.append("Test_Result_Of_").append(platform);
+
+			        File file = new File(resultFolder.toString());
+			        if (!file.exists()) {
+			            file = new File(resultFolder.toString());
+			            file.mkdir();
+			            return resultFolder.toString();
+			        } else {
+			            return file.getAbsolutePath();
+			        }
+			    }
+
+			    /**
+			     * Prints the debug information.
+			     * 
+			     * @param writerName the writer name
+			     * @param encoding the encoding
+			     */
+			    private void printDebugInformation(String writerName, String encoding,
+			            String content) {
+			        StringBuffer msg = new StringBuffer();
+			        msg.append("\n<<<<----------------------------------");
+			        msg.append(" Test written by ").append(writerName);
+			        msg.append(" with encoding ").append(encoding);
+			        msg.append(" ---------------------------------->>>>\n");
+			        msg.append(" \nOriginal string: ").append(content).append("\n");
+			        System.out.println(msg.toString());
+			    }
+
+			    /**
+			     * Reset default system encoding.
+			     */
+			    private void resetDefaultSystemEncoding() {
+			        System.setProperty("file.encoding", DEFAULT_SYSTEM_ENCODING);
+			    }
+			}
+
+			【1】中文平台情况下，测试结果如下：
+
+			 1.如果采用FileWriter，并指定GBK编码：编码后字符长度为15，可以正常保存和读取
+			 2.如果采用FileWriter，并指定UTF-8编码：编码后字节长度为16，可以正常保存和读取
+			 3.如果采用FileWriter，并指定ISO8859-1编码：编码后字节长度为17，可以正常保存和读取
+			  
+			 4.如果采用OutputStreamWriter，并指定GBK编码：编码后字符长度为15，可以正常保存和读取
+			 5.如果采用OutputStreamWriter，并指定UTF-8编码：编码后字节长度为16，可以正常保存和读取
+			 6.如果采用OutputStreamWriter，并指定ISO-8859-1编码：编码后字节长度为17，变成?
+
+			【2】英文平台情况下，测试结果如下：
+			 1.如果采用FileWriter，并指定GBK编码：编码后字符长度为15，变成?
+			 2.如果采用FileWriter，并指定UTF-8编码：编码后字节长度为16，变成? 
+			 3.如果采用FileWriter，并指定ISO-8859-1编码：编码后字节长度为17，变成?
+			  
+			 4.如果采用OutputStreamWriter，并指定GBK编码：编码后字符长度为15，可以正常保存和读取
+			 5.如果采用OutputStreamWriter，并指定UTF-8编码：编码后字节长度为16，可以正常保存和读取
+			 6.如果采用OutputStreamWriter，并指定ISO-8859-1编码：编码后字节长度为17，变成? 
+
+			【结论】
+			①在中文平台下，如果使用FileWriter，不论你如何设置字符集都不会起作用。因为它采用的是默认的系统字符集。即便你设置了System.setProperty("file.encoding", "ISO-8859-1")，或者在运行时给予参数-Dfile.encoding=UTF-8都不会起作用。你会发现它最终还是都已"GB2312"或者"GBK"的方式保存。
+			  
+			在中文平台下，如果使用OutputStreamWriter，则在后台写入时会把字符流转换成字节流，此时指定的编码字符集就起作用了。可以看到在指定GBK、UTF-8的情况下中文可以正常的保存和读取，同时文件按照我们给定的方式保存了。而对于ISO-8859-1则变成了?，这再次证明了采用ISO-8859-1是不能保存中文的，而且会因为中文编码在ISO-8859-1的编码中找不到对应的字符而默认转换成?。 
+			  
+			②在英文平台下，如果使用FileWriter，不论你如何设置字符集同样都不会起作用。所有的文件都将按照ISO-8859-1的编码方式保存，毫无疑问地变成了?。在英文平台下，如果使用OutputStreamWriter，则只有当我们把字符和文件的编码方式正确设置为GBK、UTF-8的情况下，中文才能正确的保存并显示。
+
+			③通过上述的实验证明，为了确保在不同的平台下，客户端输入的中文可以被正确地解析、保存、读取。最好的办法就是使用OutputStreamWriter配合UTF-8编码。
+			  
+			如果不想使用UTF-8编码，那么可以考虑使用GB2312，不建议使用GBK、GB18030。因为对于某些老式的文本编辑器，甚至不支持GBK、GB18030的编码，但是对于GB2312则是一定支持的。因为前两者都不是国标但后者是。
+
+			④关于String的getBytes()，getBytes(encoding)和new String(bytes, encoding)这三个方法，非常值得注意：
+			  
+			  A.getBytes()：使用平台默认的编码方式(通过file.encoding属性获取)方式来将字符串转换成byte[]。得到的是字符串最原始的字节编码值。
+			   
+			  B.getBytes(NAME_OF_CHARSET)：使用指定的编码方式将字符串转换成byte[]，如果想要得到正确的字节数组，程序员必须给出正确的NAME_OF_CHARSET。否则得到的就不会得到正确的结果。
+			    
+			  C.new String(bytes, encoding)：如果我们在客户端使用UTF-8编码的JSP页面发出请求，浏览器编码后的UTF-8字节会以ISO-8859-1的形式传递到服务器端。所以要得到经HTTP协议传输的原始字节，我们需要先调用getBytes("ISO-8859-1")得到原始的字节，但由于我们客户端的原始编码是UTF-8，如果继续按照ISO-8859-1解码，那么得到的将不是一个中文字符，而是3个乱码的字符。所以我们需要再次调用new String(bytes,"UTF-8")，将字节数组按照UTF-8的格式，每3个一组进行解码，才能还原为客户端的原始字符。
+
+			  D.String的getBytes()、getBytes(NAME_OF_CHARSET)方法都是比较微妙的方法，原则上：传输时采用的是什么编码，我们就需要按照这种编码得到字节。new String(bytes, NAME_OF_CHARSET)则更加需要小心，原则上：客户端采用的是什么编码，那么这里的NAME_OF_CHARSET就必须和客户端保持一致。
+			    
+			   例如JSP页面是GBK，那么我们接收页面传递而来的参数时就必须使用new String(parameter.getBytes("ISO-8859-1"), "GBK");如果使用了错误的解码方式，如使用了UTF-8，那么得到的很有可能就是乱码了。
+			    
+			   也就是说：GBK--->ISO-8859-1--->GBK、UTF-8--->ISO-8859-1--->UTF-8的转换过程是没有问题的。但是GBK--->ISO-8859-1--->UTF-8、UTF-8--->ISO-8859-1--->GBK的字节直接转码则可能导致乱码，需要另外的转换过程。
+			 
+			记住：
+
+			谨慎地使用getBytes(NAME_OF_CHARSET)和new String(bytes, NAME_OF_CHARSET)，除非你很清楚的知道原始的字符编码和传输协议使用的编码。
+
+			推荐使用基于服务器的配置、过滤器设置request/response的characterEncoding、content type属性。还有就是JSP页面的pageEncoding属性、HTML meta元素的content type属性。尽量避免频繁的在代码中进行字符串转码，即降低了效率又增加了风险
+
+	2.3 JAVA WEB
+	
+		2.3.1 URL编码
+			网络标准RFC 1738做了硬性规定:
+			"...Only alphanumerics [0-9a-zA-Z], the special characters "$-_.+!*'()," [not including the quotes - ed], and reserved characters used for their reserved purposes may be used unencoded within a URL."
+			"只有字母和数字[0-9a-zA-Z]、一些特殊符号"$-_.+!*'(),"[不包括双引号]、以及某些保留字，才可以不经过编码直接用于URL。"
+			这意味着，如果URL中有汉字，就必须编码后使用。
+
+			Http://  localhost  :8080   /demo  			/servlets/servlet  /君山?  		title=君山
+			scheme	 Domain		Port	ContexParth		ServletPath			PathInfo	QueryString
+			在FireFox中测试 
+			结果为http://localhost:8080//demo/servlets/servlet/%E5%90%9B%E5%B1%B1?title=%BE%FD%C9%BD
+			PathInfo为UTF-8编码 QueryString为GBK编码 而%是浏览器将非ASCII字符按照某种编码格式编码成16进制后在每个16进制字节前加上%
+
+			PathInfo由浏览器编码,可以在浏览器-Internet属性-高级-国际-以UTF-8形式发送URL 中设置
+			QueryString不属于URL路径
+
+			QueryString的解析:
+			GET方式的QueryString在url的末尾 而POST方法的QueryString以表单形式存储在http请求的body中
+			但两者最终都以Parameters保存
+			request.getParameters调用parseParameters方法对参数解码
+			
+			GET:URL在HTTP请求的Header中,QueryString的解码字符集可以在Header的ContentType的Charset设置,默认ISO-8859-1
+
+			POST表单:POST的参数表单不同于GET的QueryString,在HTTP的BODY中,一般提交后会按照页面的ContenType的Charset将参数编码,而服务器也将按照ContenType的字符集解码,可以通过request.setCharacterEncoding(charset)设置  PS:应当在第一次调用request.getParameters前调用request.setCharacterEncoding(charset),否则可能出现乱码
