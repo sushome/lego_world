@@ -57,6 +57,8 @@ copy con test.txt                 从屏幕上等待输入，按ctrl+Z结束输�
 copy 1.txt + 2.txt 3.txt          合并1和2内容，保存到3文件（如果不指定3.txt，则保存到1.txt）
 copy test.txt +                   复制文件到自己，实际上是修改了文件时间
 
+xcopy c:\CRM_BR\*  c:\demo\ /s/e  将CRM_BR文件夹下所有的子文件夹和文件复制到demo下
+
 12. title
 设置cmd窗口的标题
 title 新标题
