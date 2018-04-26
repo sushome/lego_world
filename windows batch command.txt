@@ -58,6 +58,7 @@ copy 1.txt + 2.txt 3.txt          合并1和2内容，保存到3文件（如果�
 copy test.txt +                   复制文件到自己，实际上是修改了文件时间
 
 xcopy c:\CRM_BR\*  c:\demo\ /s/e  将CRM_BR文件夹下所有的子文件夹和文件复制到demo下
+(xcopy 参数种类繁多，可在具体使用时查询)
 
 12. title
 设置cmd窗口的标题
